@@ -54,14 +54,12 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Load font
     io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter/Inter_18pt-Regular.ttf", 18.0);
 
     // Setup Platform / Renderer backends
-
     if (!ImGui_ImplSDL3_InitForSDLRenderer(state.window, state.renderer)) {
         SDL_Log("Couldn't initialize imgui");
         return SDL_APP_FAILURE;
