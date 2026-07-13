@@ -18,6 +18,7 @@ Checks: >
     -performance-avoid-endl,
     -performance-enum-size,
   readability-*,
+    -readability-uppercase-literal-suffix,
     -readability-function-cognitive-complexity,
     -readability-identifier-length,
     -readability-magic-numbers,
