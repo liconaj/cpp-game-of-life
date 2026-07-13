@@ -19,6 +19,7 @@ struct AppState
     SDL_Renderer* renderer = nullptr;
 
     bool minimized = false;
+    bool showDearImGuiDemo = false;
 };
 
 } // namespace
@@ -105,7 +106,18 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     if (!state.minimized) {
         ImGui::DockSpaceOverViewport();
 
-        ImGui::ShowDemoWindow();
+        // Draw menu bar
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("View")) {
+                ImGui::MenuItem("Show Dear ImGui Demo", nullptr, &state.showDearImGuiDemo);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+
+        if (state.showDearImGuiDemo) {
+            ImGui::ShowDemoWindow(&state.showDearImGuiDemo);
+        }
     }
 
     // Rendering
