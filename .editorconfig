@@ -1,0 +1,27 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+
+[*.{cpp,h,hpp,cxx,cc,c,ixx}]
+indent_style = space
+indent_size = 4
+
+[*.cmake]
+indent_style = space
+indent_size = 4
+
+[CMakeLists.txt]
+indent_style = space
+indent_size = 4
+
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.{yml,yaml,clang-tidy,clang-format,clangd}]
+indent_style = space
+indent_size = 2

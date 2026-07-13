@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Kitware/CMake/master/Help/manual/presets/schema.json",
+  "version": 9,
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default",
+      "description": "Configure the project using the Nina Multi-Config generator.",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build/default",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release;RelWithDebInfo;MinSizeRel"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Build the Debug configuration.",
+      "configurePreset": "default",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Build the Release configuration.",
+      "configurePreset": "default",
+      "configuration": "Release"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://json.schemastore.org/clang-format-21.x.json
+---
+# Start from the LLVM coding style and override only the options that
+# differ from the default.
+BasedOnStyle: LLVM
+
+# Use 4-space indentation and wrap long lines at 120 columns.
+IndentWidth: 4
+ColumnLimit: 120
+
+# Target the latest supported C++ standard when formatting.
+Standard: Latest
+
+# Keep #include directives grouped and sorted.
+IncludeBlocks: Regroup
+
+# Use a custom brace style:
+#   - Classes, structs and functions open on a new line.
+#   - Control statements (if, for, while, etc.) retain the LLVM style.
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterStruct: true
+  AfterFunction: true
+
+# Prefer placing '*' next to the type (e.g. int* ptr).
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+# Keep simple inline member functions on a single line.
+AllowShortFunctionsOnASingleLine: Inline
+
+# Indent wrapped function arguments relative to the opening bracket.
+AlignAfterOpenBracket: BlockIndent
+
+# Align access specifiers (public:, private:, protected:) with the class
+# declaration instead of the member declarations.
+AccessModifierOffset: -4
+...
