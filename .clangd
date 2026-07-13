@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=https://www.schemastore.org/clangd.json
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: None
+
+CompileFlags:
+  Add:
+    - -Wall
