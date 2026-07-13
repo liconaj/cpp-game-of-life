@@ -2,11 +2,14 @@ add_executable(gameoflife
     main.cpp
 )
 
+add_subdirectory(imgui_extensions)
+
 target_link_libraries(gameoflife
     PRIVATE
         SDL3::SDL3
         ImGui::ImGui
         ImGui::ImplSDL3
+        ImGui::Extensions
 )
 
 add_custom_command(

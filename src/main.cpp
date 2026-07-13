@@ -1,12 +1,13 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 
+#include "imgui.h"
+#include "imgui_extensions.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_sdlrenderer3.h"
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <string>
-
-#include "imgui.h"
-#include "imgui_impl_sdl3.h"
-#include "imgui_impl_sdlrenderer3.h"
 
 namespace {
 
@@ -20,6 +21,7 @@ struct AppState
 
     bool minimized = false;
     bool showDearImGuiDemo = false;
+    bool showStatusBar = true;
 };
 
 } // namespace
@@ -61,6 +63,10 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 
     // Load font
     io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter/Inter_18pt-Regular.ttf", 18.0);
+
+    // Style
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.Colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.2f, 0.2f, 0.2f, 1.0f);
 
     // Setup Platform / Renderer backends
     if (!ImGui_ImplSDL3_InitForSDLRenderer(state.window, state.renderer)) {
@@ -106,14 +112,28 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     if (!state.minimized) {
         ImGui::DockSpaceOverViewport();
 
-        // Draw menu bar
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+        // Main menu bar
         if (ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("View")) {
-                ImGui::MenuItem("Show Dear ImGui Demo", nullptr, &state.showDearImGuiDemo);
+                ImGui::MenuItem("Status bar",  nullptr, &state.showStatusBar);
+                ImGui::Separator();
+                ImGui::MenuItem("Dear ImGui Demo", nullptr, &state.showDearImGuiDemo);
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();
         }
+
+        // Main Status bar
+        if (state.showStatusBar) {
+            if (ImGui::BeginMainStatusBar()) {
+                ImGui::Text("FPS: %0.1f", ImGui::GetIO().Framerate);
+                ImGui::EndMainStatusBar();
+            }
+        }
+
+        ImGui::PopStyleVar();
 
         if (state.showDearImGuiDemo) {
             ImGui::ShowDemoWindow(&state.showDearImGuiDemo);
@@ -121,9 +141,10 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     }
 
     // Rendering
-    SDL_SetRenderDrawColor(state.renderer, 100, 100, 100, 255);
-    SDL_RenderClear(state.renderer);
     ImGui::Render();
+    SDL_SetRenderDrawColor(state.renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(state.renderer);
+
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), state.renderer);
     SDL_RenderPresent(state.renderer);
 
