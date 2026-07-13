@@ -17,6 +17,8 @@ struct AppState
 {
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
+
+    bool minimized = false;
 };
 
 } // namespace
@@ -74,10 +76,18 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
 
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 {
+    auto& state = *static_cast<AppState*>(appstate);
+
     ImGui_ImplSDL3_ProcessEvent(event);
 
     if (event->type == SDL_EVENT_QUIT) {
         return SDL_APP_SUCCESS;
+    }
+
+    if (event->type == SDL_EVENT_WINDOW_MINIMIZED) {
+        state.minimized = true;
+    } else if (event->type == SDL_EVENT_WINDOW_SHOWN) {
+        state.minimized = false;
     }
 
     return SDL_APP_CONTINUE;
@@ -91,9 +101,12 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
-    ImGui::DockSpaceOverViewport();
 
-    ImGui::ShowDemoWindow();
+    if (!state.minimized) {
+        ImGui::DockSpaceOverViewport();
+
+        ImGui::ShowDemoWindow();
+    }
 
     // Rendering
     SDL_SetRenderDrawColor(state.renderer, 100, 100, 100, 255);
