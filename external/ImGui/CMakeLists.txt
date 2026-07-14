@@ -36,6 +36,6 @@ target_include_directories(imgui_implsdl3
 
 target_link_libraries(imgui_implsdl3
     PUBLIC
-        imgui
+        ImGui::ImGui
         SDL3::SDL3
 )
