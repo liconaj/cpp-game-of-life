@@ -4,6 +4,7 @@
 #include "imgui_extensions.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
+#include "imgui_internal.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -30,6 +31,7 @@ struct AppState
     bool showDearImGuiDemo = false;
     bool showStatusBar = true;
 
+    bool layoutInitalized = false;
     bool running = true;
 };
 
@@ -40,6 +42,18 @@ void updateRenderVsync(AppState& state)
         SDL_Log("Couldn't set renderer with vsync %d: %s", vsync, SDL_GetError());
         state.vsyncEnabled = false;
     }
+}
+
+void buildDockLayout(ImGuiID dockspaceId, ImGuiViewport* viewport)
+{
+    if (ImGui::DockBuilderGetNode(dockspaceId) != nullptr) {
+        return;
+    }
+
+    ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
+    ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
+    ImGui::DockBuilderDockWindow("World Grid", dockspaceId);
+    ImGui::DockBuilderFinish(dockspaceId);
 }
 
 } // namespace
@@ -130,7 +144,10 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     ImGui::NewFrame();
 
     if (!state.minimized) {
-        ImGui::DockSpaceOverViewport();
+        ImGuiID dockspaceId = ImGui::GetID("My DockSpace");
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        buildDockLayout(dockspaceId, viewport);
+        ImGui::DockSpaceOverViewport(dockspaceId, viewport, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_NoDockingOverCentralNode);
 
         // --------------------------------------------------------------------------
         // Start menu and status bar configuration
@@ -181,6 +198,11 @@ SDL_AppResult SDL_AppIterate(void* appstate)
         if (state.showDearImGuiDemo) {
             ImGui::ShowDemoWindow(&state.showDearImGuiDemo);
         }
+
+        // For some reason the settings of the window must be saved, otherwise it will not be docked as
+        // configured in buildDockLayout(). This window must no be moved so it always stay in the central node
+        ImGui::Begin("World Grid", nullptr, ImGuiWindowFlags_NoMove);
+        ImGui::End();
     }
 
     // Rendering
