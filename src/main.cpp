@@ -33,6 +33,9 @@ struct AppState
 
     bool layoutInitalized = false;
     bool running = true;
+
+    float lastScaleX = 0;
+    float lastScaleY = 0;
 };
 
 void updateRenderVsync(AppState& state)
@@ -56,6 +59,26 @@ void buildDockLayout(ImGuiID dockspaceId, ImGuiViewport* viewport)
     ImGui::DockBuilderFinish(dockspaceId);
 }
 
+void handleHighDpi(AppState& state)
+{
+    int width{};
+    int height{};
+    int widthPixels{};
+    int heightPixels{};
+    SDL_GetWindowSize(state.window, &width, &height);
+    SDL_GetWindowSizeInPixels(state.window, &widthPixels, &heightPixels);
+    if (width == 0 || height == 0) {
+        return;
+    }
+    float scaleX = static_cast<float>(widthPixels) / width;
+    float scaleY = static_cast<float>(heightPixels) / height;
+    if (scaleX != state.lastScaleX && scaleY != state.lastScaleY) {
+        SDL_SetRenderScale(state.renderer, scaleX, scaleY);
+        state.lastScaleX = scaleX;
+        state.lastScaleY = scaleY;
+    }
+}
+
 } // namespace
 
 extern "C" {
@@ -74,7 +97,9 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
         return SDL_APP_FAILURE;
     }
 
-    state.window = SDL_CreateWindow(appName.c_str(), WindowWidth, WindowHeight, SDL_WINDOW_RESIZABLE);
+    state.window = SDL_CreateWindow(
+        appName.c_str(), WindowWidth, WindowHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY
+    );
     SDL_SetWindowMinimumSize(state.window, MinimumWindowWidth, MinimumWindowHeight);
     if (state.window == nullptr) {
         SDL_Log("Couldn't create window: %s", SDL_GetError());
@@ -87,6 +112,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
     }
 
     updateRenderVsync(state);
+    handleHighDpi(state);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -96,10 +122,15 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Load font
-    io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter/Inter_18pt-Regular.ttf", 18.0);
+    io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter/Inter_18pt-Regular.ttf");
+    io.ConfigDpiScaleFonts = true;
+    io.ConfigDpiScaleViewports = true;
 
     // Style
+    float displayScale = SDL_GetWindowDisplayScale(state.window);
     ImGuiStyle& style = ImGui::GetStyle();
+    style.FontSizeBase = 18.0f;
+    style.FontScaleDpi = displayScale;
     style.Colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.2f, 0.2f, 0.2f, 1.0f);
 
     // Setup Platform / Renderer backends
@@ -138,6 +169,8 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 {
     auto& state = *static_cast<AppState*>(appstate);
 
+    handleHighDpi(state);
+
     // Star the Dear ImGui frame
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
@@ -147,7 +180,9 @@ SDL_AppResult SDL_AppIterate(void* appstate)
         ImGuiID dockspaceId = ImGui::GetID("My DockSpace");
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         buildDockLayout(dockspaceId, viewport);
-        ImGui::DockSpaceOverViewport(dockspaceId, viewport, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_NoDockingOverCentralNode);
+        ImGui::DockSpaceOverViewport(
+            dockspaceId, viewport, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_NoDockingOverCentralNode
+        );
 
         // --------------------------------------------------------------------------
         // Start menu and status bar configuration
@@ -169,7 +204,7 @@ SDL_AppResult SDL_AppIterate(void* appstate)
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("View")) {
-                ImGui::MenuItem("Status bar",  nullptr, &state.showStatusBar);
+                ImGui::MenuItem("Status bar", nullptr, &state.showStatusBar);
                 ImGui::Separator();
                 ImGui::MenuItem("Dear ImGui Demo", nullptr, &state.showDearImGuiDemo);
                 ImGui::EndMenu();
@@ -236,5 +271,4 @@ void SDL_AppQuit(void* appstate, SDL_AppResult result)
 
     SDL_Quit();
 }
-
 }
