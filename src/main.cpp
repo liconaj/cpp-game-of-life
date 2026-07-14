@@ -12,7 +12,9 @@
 namespace {
 
 constexpr int WindowWidth = 900;
-constexpr int WindowHeight = 640;
+constexpr int WindowHeight = 600;
+constexpr int MinimumWindowWidth = 600;
+constexpr int MinimumWindowHeight = 400;
 
 struct AppState
 {
@@ -59,6 +61,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
     }
 
     state.window = SDL_CreateWindow(appName.c_str(), WindowWidth, WindowHeight, SDL_WINDOW_RESIZABLE);
+    SDL_SetWindowMinimumSize(state.window, MinimumWindowWidth, MinimumWindowHeight);
     if (state.window == nullptr) {
         SDL_Log("Couldn't create window: %s", SDL_GetError());
         return SDL_APP_FAILURE;
