@@ -19,10 +19,26 @@ struct AppState
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
 
+    bool vsyncEnabled = true;
+    double framerate = 0.0;
+    double frameTimeMs = 0.0;
+
     bool minimized = false;
+
     bool showDearImGuiDemo = false;
     bool showStatusBar = true;
+
+    bool running = true;
 };
+
+void updateRenderVsync(AppState& state)
+{
+    int vsync = state.vsyncEnabled ? 1 : SDL_RENDERER_VSYNC_DISABLED;
+    if (SDL_SetRenderVSync(state.renderer, vsync) == false) {
+        SDL_Log("Couldn't set renderer with vsync %d: %s", vsync, SDL_GetError());
+        state.vsyncEnabled = false;
+    }
+}
 
 } // namespace
 
@@ -47,12 +63,13 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
         SDL_Log("Couldn't create window: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
-
     state.renderer = SDL_CreateRenderer(state.window, nullptr);
     if (state.renderer == nullptr) {
         SDL_Log("Couldn't create renderer: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
+
+    updateRenderVsync(state);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -112,10 +129,25 @@ SDL_AppResult SDL_AppIterate(void* appstate)
     if (!state.minimized) {
         ImGui::DockSpaceOverViewport();
 
+        // --------------------------------------------------------------------------
+        // Start menu and status bar configuration
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
         // Main menu bar
         if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("Menu")) {
+                if (ImGui::BeginMenu("Settings")) {
+                    if (ImGui::Checkbox("Enable VSync", &state.vsyncEnabled)) {
+                        updateRenderVsync(state);
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem("Quit", "Alt+F4")) {
+                    state.running = false;
+                }
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("View")) {
                 ImGui::MenuItem("Status bar",  nullptr, &state.showStatusBar);
                 ImGui::Separator();
@@ -127,13 +159,21 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
         // Main Status bar
         if (state.showStatusBar) {
+            ImGui::PushFont(nullptr, 18.0);
             if (ImGui::BeginMainStatusBar()) {
-                ImGui::Text("FPS: %0.1f", ImGui::GetIO().Framerate);
+                if (ImGui::BeginTable("Status", 1)) {
+                    ImGui::TableNextColumn();
+                    ImGui::Text("FPS: %3.1f (%2.1f ms)", state.framerate, state.frameTimeMs);
+                    ImGui::EndTable();
+                }
                 ImGui::EndMainStatusBar();
             }
+            ImGui::PopFont();
         }
 
         ImGui::PopStyleVar();
+        // End menu and status bar configuration
+        // --------------------------------------------------------------------------
 
         if (state.showDearImGuiDemo) {
             ImGui::ShowDemoWindow(&state.showDearImGuiDemo);
@@ -147,6 +187,13 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), state.renderer);
     SDL_RenderPresent(state.renderer);
+
+    state.framerate = ImGui::GetIO().Framerate;
+    state.frameTimeMs = 1000.0 / state.framerate;
+
+    if (state.running == false) {
+        return SDL_APP_SUCCESS;
+    }
 
     return SDL_APP_CONTINUE;
 }
