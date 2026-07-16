@@ -8,6 +8,7 @@ target_link_libraries(gameoflife
     PRIVATE
         SDL3::SDL3
         ImGui::ImplSDL3
+        ImGui::ImplOpenGL3
         ImGui::Extensions
 )
 

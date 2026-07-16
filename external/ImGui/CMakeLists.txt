@@ -9,6 +9,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
+# Add library for base Dear ImGui
 add_library(imgui
     STATIC
         "${imgui_SOURCE_DIR}/imgui.cpp"
@@ -23,6 +24,7 @@ target_include_directories(imgui
     PUBLIC "${imgui_SOURCE_DIR}"
 )
 
+# Add library for SDL3 backend
 add_library(imgui_implsdl3
     STATIC
         "${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp"
@@ -38,4 +40,22 @@ target_link_libraries(imgui_implsdl3
     PUBLIC
         ImGui::ImGui
         SDL3::SDL3
+)
+
+# Add library for OpenGL3 backend
+add_library(imgui_implopengl3
+    STATIC
+        "${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp"
+)
+add_library(ImGui::ImplOpenGL3 ALIAS imgui_implopengl3)
+
+target_include_directories(imgui_implopengl3
+    PUBLIC "${imgui_SOURCE_DIR}/backends"
+)
+
+find_package(OpenGL REQUIRED)
+target_link_libraries(imgui_implopengl3
+    PUBLIC
+        ImGui::ImGui
+        OpenGL::GL
 )
