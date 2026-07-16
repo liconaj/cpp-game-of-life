@@ -1,13 +1,19 @@
+#include "SDL3/SDL_video.h"
 #define SDL_MAIN_USE_CALLBACKS 1
 
 #include "imgui.h"
 #include "imgui_extensions.h"
+#include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl3.h"
-#include "imgui_impl_sdlrenderer3.h"
 #include "imgui_internal.h"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#if defined(IMGUI_IMPL_OPENGL_ES2)
+#include <SDL3/SDL_opengles2.h>
+#else
+#include <SDL3/SDL_opengl.h>
+#endif
 #include <string>
 
 namespace {
@@ -20,7 +26,7 @@ constexpr int MinimumWindowHeight = 400;
 struct AppState
 {
     SDL_Window* window = nullptr;
-    SDL_Renderer* renderer = nullptr;
+    SDL_GLContext glContext = nullptr;
 
     bool vsyncEnabled = true;
     double framerate = 0.0;
@@ -40,9 +46,9 @@ struct AppState
 
 void updateRenderVsync(AppState& state)
 {
-    int vsync = state.vsyncEnabled ? 1 : SDL_RENDERER_VSYNC_DISABLED;
-    if (SDL_SetRenderVSync(state.renderer, vsync) == false) {
-        SDL_Log("Couldn't set renderer with vsync %d: %s", vsync, SDL_GetError());
+    int vsync = state.vsyncEnabled ? 1 : 0;
+    if (SDL_GL_SetSwapInterval(vsync) == false) {
+        SDL_Log("Couldn't set GL with vsync %d: %s", vsync, SDL_GetError());
         state.vsyncEnabled = false;
     }
 }
@@ -57,26 +63,6 @@ void buildDockLayout(ImGuiID dockspaceId, ImGuiViewport* viewport)
     ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
     ImGui::DockBuilderDockWindow("World Grid", dockspaceId);
     ImGui::DockBuilderFinish(dockspaceId);
-}
-
-void handleHighDpi(AppState& state)
-{
-    int width{};
-    int height{};
-    int widthPixels{};
-    int heightPixels{};
-    SDL_GetWindowSize(state.window, &width, &height);
-    SDL_GetWindowSizeInPixels(state.window, &widthPixels, &heightPixels);
-    if (width == 0 || height == 0) {
-        return;
-    }
-    float scaleX = static_cast<float>(widthPixels) / width;
-    float scaleY = static_cast<float>(heightPixels) / height;
-    if (scaleX != state.lastScaleX && scaleY != state.lastScaleY) {
-        SDL_SetRenderScale(state.renderer, scaleX, scaleY);
-        state.lastScaleX = scaleX;
-        state.lastScaleY = scaleY;
-    }
 }
 
 } // namespace
@@ -97,22 +83,63 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
         return SDL_APP_FAILURE;
     }
 
+    // Select GL version and let the backend select a GLSL version
+    const char* glslVersion = nullptr;
+#if defined(IMGUI_IMPL_OPENGL_ES2)
+    // GL ES 2.0 + GLSL 100 (WebGL 1.0)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#elif defined(IMGUI_IMPL_OPENGL_ES3)
+    // GL ES 3.0 + GLSL 300 es (WebGL 2.0)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#elif defined(__APPLE__)
+    // GL 3.2 Core + generally GLSL 150
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#else
+    // GL 3.0 + generally GLSL 130
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#endif
+
+    // Set OpenGL graphics context and create window
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+
+    float displayScale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+
     state.window = SDL_CreateWindow(
-        appName.c_str(), WindowWidth, WindowHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY
+        appName.c_str(), WindowWidth, WindowHeight,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY
     );
     SDL_SetWindowMinimumSize(state.window, MinimumWindowWidth, MinimumWindowHeight);
     if (state.window == nullptr) {
         SDL_Log("Couldn't create window: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
-    state.renderer = SDL_CreateRenderer(state.window, nullptr);
-    if (state.renderer == nullptr) {
-        SDL_Log("Couldn't create renderer: %s", SDL_GetError());
+    state.glContext = SDL_GL_CreateContext(state.window);
+    if (state.glContext == nullptr) {
+        SDL_Log("Couldn't create GL context: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
+    SDL_GL_MakeCurrent(state.window, state.glContext);
+
     updateRenderVsync(state);
-    handleHighDpi(state);
+
+    // Show window in the center of the screen
+    SDL_SetWindowPosition(state.window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    SDL_ShowWindow(state.window);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -120,28 +147,29 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char* argv[])
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-    // Load font
-    io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter/Inter_18pt-Regular.ttf");
-    io.ConfigDpiScaleFonts = true;
-    io.ConfigDpiScaleViewports = true;
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
     // Style
-    float displayScale = SDL_GetWindowDisplayScale(state.window);
+    ImGui::StyleColorsDark();
     ImGuiStyle& style = ImGui::GetStyle();
     style.FontSizeBase = 18.0f;
     style.FontScaleDpi = displayScale;
     style.Colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.2f, 0.2f, 0.2f, 1.0f);
 
     // Setup Platform / Renderer backends
-    if (!ImGui_ImplSDL3_InitForSDLRenderer(state.window, state.renderer)) {
+    if (!ImGui_ImplSDL3_InitForOpenGL(state.window, state.glContext)) {
         SDL_Log("Couldn't initialize imgui");
         return SDL_APP_FAILURE;
     }
-    if (!ImGui_ImplSDLRenderer3_Init(state.renderer)) {
+    if (!ImGui_ImplOpenGL3_Init(glslVersion)) {
         SDL_Log("Couldn't initialize sdl renderer");
         return SDL_APP_FAILURE;
     }
+
+    // Load font
+    io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/Inter/Inter_18pt-Regular.ttf");
+    io.ConfigDpiScaleFonts = true;
+    io.ConfigDpiScaleViewports = true;
 
     return SDL_APP_CONTINUE;
 }
@@ -169,10 +197,8 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 {
     auto& state = *static_cast<AppState*>(appstate);
 
-    handleHighDpi(state);
-
     // Star the Dear ImGui frame
-    ImGui_ImplSDLRenderer3_NewFrame();
+    ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
@@ -242,11 +268,27 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
     // Rendering
     ImGui::Render();
-    SDL_SetRenderDrawColor(state.renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(state.renderer);
+    ImGuiIO& io = ImGui::GetIO();
 
-    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), state.renderer);
-    SDL_RenderPresent(state.renderer);
+    // Clear GL viewport
+    ImVec4 clearColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    glViewport(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+    glClearColor(clearColor.x * clearColor.w, clearColor.y * clearColor.w, clearColor.z * clearColor.w, clearColor.w);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    // Update multi-viewports
+    if ((io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
+        SDL_Window* backupCurrentWindow = SDL_GL_GetCurrentWindow();
+        SDL_GLContext backupCurrentContext = SDL_GL_GetCurrentContext();
+
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+
+        SDL_GL_MakeCurrent(backupCurrentWindow, backupCurrentContext);
+    }
+
+    SDL_GL_SwapWindow(state.window);
 
     state.framerate = ImGui::GetIO().Framerate;
     state.frameTimeMs = 1000.0 / state.framerate;
@@ -260,12 +302,12 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result)
 {
-    ImGui_ImplSDLRenderer3_Shutdown();
+    ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
     auto const* state = static_cast<AppState*>(appstate);
-    SDL_DestroyRenderer(state->renderer);
+    SDL_GL_DestroyContext(state->glContext);
     SDL_DestroyWindow(state->window);
     delete state;
 
