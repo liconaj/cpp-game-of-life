@@ -2,7 +2,3 @@
 Diagnostics:
   UnusedIncludes: Strict
   MissingIncludes: None
-
-CompileFlags:
-  Add:
-    - -Wall

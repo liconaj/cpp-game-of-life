@@ -22,3 +22,18 @@ add_custom_target(copy_compile_commands ALL
         "${PROJECT_SOURCE_DIR}/compile_commands.json"
     VERBATIM
 )
+
+if(MSVC)
+    add_compile_options(
+        /W4
+        /permissive-
+    )
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    add_compile_options(
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wsign-conversion
+    )
+endif()
