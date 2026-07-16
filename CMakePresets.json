@@ -1,32 +1,43 @@
 {
-  "$schema": "https://raw.githubusercontent.com/Kitware/CMake/master/Help/manual/presets/schema.json",
   "version": 9,
   "configurePresets": [
     {
-      "name": "default",
-      "displayName": "Default",
-      "description": "Configure the project using the Nina Multi-Config generator.",
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "ninja-multi",
+      "inherits": "base",
+      "displayName": "Ninja Multi-Config",
+      "description": "Configure the project using the Ninja Multi-Config generator. The compiler is selected based on the current environment.",
       "generator": "Ninja Multi-Config",
-      "binaryDir": "${sourceDir}/build/default",
       "cacheVariables": {
-        "CMAKE_CONFIGURATION_TYPES": "Debug;Release;RelWithDebInfo;MinSizeRel"
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release;RelWithDebInfo"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "debug",
-      "displayName": "Debug",
-      "description": "Build the Debug configuration.",
-      "configurePreset": "default",
+      "name": "ninja-multi-debug",
+      "displayName": "Ninja Multi-Config - Debug",
+      "description": "Build the project using the Debug configuration.",
+      "configurePreset": "ninja-multi",
       "configuration": "Debug"
     },
     {
-      "name": "release",
-      "displayName": "Release",
-      "description": "Build the Release configuration.",
-      "configurePreset": "default",
+      "name": "ninja-multi-release",
+      "displayName": "Ninja Multi-Config - Release",
+      "description": "Build the project using the Release configuration.",
+      "configurePreset": "ninja-multi",
       "configuration": "Release"
+    },
+    {
+      "name": "ninja-multi-relwithdebinfo",
+      "displayName": "Ninja Multi-Config - RelWithDebInfo",
+      "description": "Build the project using the RelWithDebInfo configuration.",
+      "configurePreset": "ninja-multi",
+      "configuration": "RelWithDebInfo"
     }
   ]
 }
