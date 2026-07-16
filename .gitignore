@@ -5,6 +5,9 @@ out/
 .idea/
 .vscode/
 .zed/
+.vs/
 
 CMakeUserPresets.json
 compile_commands.json
+
+imgui.ini
